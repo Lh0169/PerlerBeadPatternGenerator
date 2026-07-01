@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 暖调画室色板 */
+  --color-accent: #30E787;
+  --color-accent-deep: #25b868;
+  --color-accent-warm: #c8845c;
+  --color-accent-warm-light: #e8c4a8;
+  --color-surface: #fffdf9;
+  --color-surface-hover: #faf6f0;
+  --color-surface-raised: #f7f2ea;
+  --color-border: #e5ded4;
+  --color-border-light: #f0ebe4;
+  --color-border-strong: #d4cbbd;
+  --color-text: #2d2420;
+  --color-text-secondary: #6b5e56;
+  --color-text-muted: #9b8e86;
+  --color-shadow-light: rgba(45, 36, 32, 0.04);
+  --color-shadow: rgba(45, 36, 32, 0.07);
+  --color-shadow-strong: rgba(45, 36, 32, 0.12);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+  background: linear-gradient(175deg, #faf7f2 0%, #f5f0e8 40%, #f3efe7 100%);
+  color: #2d2420;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 滚动条 — 暖色系 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4cbbd; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #b8a99a; }
+
+/* Range 滑块 — 绿色强调 */
+input[type='range'] {
+  -webkit-appearance: none;
+  height: 4px;
+  background: #e5ded4;
+  border-radius: 2px;
+  outline: none;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #30E787;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(48, 231, 135, 0.3);
+}
+
+/* Select 下拉框 */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239b8e86'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+
+/* Checkbox */
+input[type='checkbox'] {
+  accent-color: #30E787;
+}

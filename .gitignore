@@ -1,0 +1,8 @@
+node_modules
+dist
+*.local
+*.tsbuildinfo
+docs
+# 除 README 外所有 md 文档不入库
+*.md
+!README.md
