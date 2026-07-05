@@ -180,7 +180,7 @@ export function exportPNG(
   }, 'image/png', 1.0);
 }
 
-// ==================== PDF 导出 ====================
+// ==================== PDF 导出（高清 + 格子色号 + 红色分隔线）====================
 
 export function exportPDF(
   matrix: string[][],
@@ -193,28 +193,38 @@ export function exportPDF(
   brand: string,
   unit: CellSizeUnit,
 ): void {
-  const doc = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = 210;
-  const pageHeight = 297;
-  const margin = 10;
+  // 页面设置：A3 横向，格子更大更清晰
+  const doc = new jsPDF('l', 'mm', 'a3');  // l = landscape 横向
+  const pageWidth = 420;   // A3 横向宽度
+  const pageHeight = 297;  // A3 横向高度
+  const margin = 15;
 
   // 注册中文字体
   registerChineseFont(doc);
   doc.setFont('NotoSansSC');
 
-  // 第一页：图纸
-  doc.setFontSize(16);
+  // ===== 第一页：高清图纸（带色号 + 红色分隔线）=====
+  doc.setFontSize(18);
   doc.setTextColor(62, 42, 30);
-  doc.text('拼豆图纸', pageWidth / 2, 15, { align: 'center' });
-  doc.setFontSize(10);
-  doc.text(`品牌: ${brand} | 尺寸: ${unit} | 网格: ${width}x${height}`, pageWidth / 2, 22, { align: 'center' });
+  doc.text('拼豆图纸', pageWidth / 2, margin + 5, { align: 'center' });
 
+  doc.setFontSize(10);
+  doc.setTextColor(120, 120, 120);
+  doc.text(`品牌: ${brand} | 尺寸: ${unit} | 网格: ${width}x${height}`, pageWidth / 2, margin + 12, { align: 'center' });
+
+  // 计算格子大小（A3 横向空间更大，统计放第二页，第一页全给图纸）
   const availW = pageWidth - margin * 2;
-  const availH = pageHeight - margin * 2 - 40;
-  const cellSize = Math.min(availW / width, availH / height, 5);
+  const availH = pageHeight - margin * 2 - 25; // 25mm 留给标题
+  const cellSize = Math.min(availW / width, availH / height);
+
   const gridW = width * cellSize;
+  const gridH = height * cellSize;
   const startX = (pageWidth - gridW) / 2;
-  const startY = 30;
+  const startY = margin + 20;
+
+  // 动态字号：格子越大字越大，最大 9pt
+  const fontSize = Math.min(cellSize * 0.4, 9);
+  const showLabel = cellSize >= 3.5; // 格子 >= 3.5mm 才印字
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -222,37 +232,121 @@ export function exportPDF(
       if (!colorId) continue;
       const color = colorMap.get(colorId);
       if (!color) continue;
+
       const { r, g, b } = hexToRgb(color.hex);
+      const cx = startX + x * cellSize + cellSize / 2;
+      const cy = startY + y * cellSize + cellSize / 2;
+
+      // 1. 绘制珠子（圆/方/中空）
       doc.setFillColor(r, g, b);
       if (beadStyle === 'round') {
-        doc.circle(startX + x * cellSize + cellSize / 2, startY + y * cellSize + cellSize / 2, cellSize / 2 - 0.2, 'F');
+        doc.circle(cx, cy, cellSize / 2 - 0.3, 'F');
+      } else if (beadStyle === 'hollow') {
+        doc.circle(cx, cy, cellSize / 2 - 0.3, 'F');
+        doc.setFillColor(Math.max(0, r - 40), Math.max(0, g - 40), Math.max(0, b - 40));
+        doc.circle(cx, cy, cellSize / 5, 'F');
       } else {
-        doc.rect(startX + x * cellSize + 0.2, startY + y * cellSize + 0.2, cellSize - 0.4, cellSize - 0.4, 'F');
+        doc.rect(startX + x * cellSize + 0.3, startY + y * cellSize + 0.3, cellSize - 0.6, cellSize - 0.6, 'F');
+      }
+
+      // 2. 在每个格子内印上色号（根据背景亮度选择文字颜色）
+      if (showLabel) {
+        const brightness = r * 0.299 + g * 0.587 + b * 0.114;
+        doc.setTextColor(brightness > 128 ? 30 : 255);
+        doc.setFontSize(fontSize);
+
+        const textWidth = doc.getTextWidth(color.code);
+        const textX = cx - textWidth / 2;
+        const textY = cy + fontSize * 0.35;
+        doc.text(color.code, textX, textY);
       }
     }
   }
 
-  // 第二页：统计
+  // 3. 红色分隔线（每 GROUP 格一组）
+  doc.setDrawColor(229, 57, 53); // #E53935 红色
+  doc.setLineWidth(0.8);
+
+  for (let r = GROUP; r < height; r += GROUP) {
+    const lineY = startY + r * cellSize;
+    doc.line(startX, lineY, startX + gridW, lineY);
+  }
+  for (let c = GROUP; c < width; c += GROUP) {
+    const lineX = startX + c * cellSize;
+    doc.line(lineX, startY, lineX, startY + gridH);
+  }
+
+  // ===== 第二页：详细颜色统计清单 =====
   if (showStats) {
     doc.addPage();
-    doc.setFontSize(14);
+
+    doc.setFontSize(16);
     doc.setTextColor(62, 42, 30);
-    doc.text('拼豆颜色统计清单', pageWidth / 2, 15, { align: 'center' });
+    doc.text('拼豆颜色统计清单', pageWidth / 2, margin + 5, { align: 'center' });
+
     const total = stats.reduce((s, c) => s + c.count, 0);
     doc.setFontSize(10);
-    doc.text(`总珠数: ${total} | 颜色种类: ${stats.length}`, pageWidth / 2, 22, { align: 'center' });
+    doc.setTextColor(100, 100, 100);
+    doc.text(`总珠数: ${total} | 颜色种类: ${stats.length}`, pageWidth / 2, margin + 12, { align: 'center' });
 
-    let cy = 35;
-    const sorted = [...stats].sort((a, b) => b.count - a.count);
+    // 表头
+    let cy = margin + 25;
+    const rowHeight = 7;
+    const colX = {
+      color: margin,
+      code: margin + 12,
+      name: margin + 40,
+      hex: margin + 120,
+      count: margin + 165,
+      percent: margin + 200,
+    };
+
+    doc.setFillColor(245, 245, 245);
+    doc.rect(margin, cy - 5, pageWidth - margin * 2, rowHeight, 'F');
     doc.setFontSize(9);
-    for (const s of sorted) {
-      if (cy > 280) { doc.addPage(); cy = 20; }
+    doc.setTextColor(80, 80, 80);
+    doc.text('色块', colX.color + 1, cy);
+    doc.text('编号', colX.code, cy);
+    doc.text('名称', colX.name, cy);
+    doc.text('Hex', colX.hex, cy);
+    doc.text('数量', colX.count, cy);
+    doc.text('占比', colX.percent, cy);
+
+    // 数据行
+    cy += rowHeight + 2;
+    const sorted = [...stats].sort((a, b) => b.count - a.count);
+
+    for (let i = 0; i < sorted.length; i++) {
+      const s = sorted[i];
+
+      // 分页
+      if (cy > pageHeight - margin - 10) {
+        doc.addPage();
+        cy = margin + 10;
+      }
+
+      // 隔行背景
+      if (i % 2 === 1) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(margin, cy - 5, pageWidth - margin * 2, rowHeight, 'F');
+      }
+
       const { r, g, b } = hexToRgb(s.color.hex);
+
+      // 色块
       doc.setFillColor(r, g, b);
-      doc.rect(margin, cy - 3, 5, 5, 'F');
-      doc.setTextColor(62, 42, 30);
-      doc.text(`${s.color.code} - ${s.color.name}: ${s.count} 颗`, margin + 10, cy + 2);
-      cy += 8;
+      doc.rect(colX.color, cy - 4, 6, 6, 'F');
+
+      // 数据
+      doc.setTextColor(60, 60, 60);
+      doc.setFontSize(8.5);
+      doc.text(s.color.code, colX.code, cy);
+      doc.text(s.color.name, colX.name, cy);
+      doc.text(s.color.hex.toUpperCase(), colX.hex, cy);
+      doc.text(String(s.count), colX.count, cy);
+      doc.text(`${s.percentage}%`, colX.percent, cy);
+
+      cy += rowHeight;
     }
   }
 
