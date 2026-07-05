@@ -75,3 +75,39 @@ select {
 input[type='checkbox'] {
   accent-color: #30E787;
 }
+
+/* ========== 移动端触摸优化 ========== */
+@media (pointer: coarse) {
+  .bead-grid-canvas {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* 增大触摸区域 */
+  .tool-button {
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  /* 隐藏 hover 效果 */
+  .tool-button:hover {
+    transform: none;
+  }
+
+  /* 侧边栏全屏展开 */
+  .sidebar-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 50;
+  }
+}
+
+/* Tauri Android 状态栏适配 */
+.tauri-android {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}

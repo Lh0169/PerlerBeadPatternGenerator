@@ -4,5 +4,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: { port: 5173 },
-  build: { outDir: 'dist' },
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      external: ['@tauri-apps/plugin-dialog', '@tauri-apps/plugin-fs'],
+    },
+  },
 })

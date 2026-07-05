@@ -6,3 +6,8 @@ docs
 # 除 README 外所有 md 文档不入库
 *.md
 !README.md
+# Tauri 构建产物
+src-tauri/target/
+src-tauri/gen/android/**/build/
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/local.properties

@@ -1,0 +1,27 @@
+[package]
+name = "perler-bead-studio"
+version = "1.0.0"
+description = "拼豆图谱生成器 - Perler Bead Pattern Studio"
+authors = ["LH"]
+edition = "2021"
+
+[lib]
+name = "perler_bead_studio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "perler-bead-studio"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

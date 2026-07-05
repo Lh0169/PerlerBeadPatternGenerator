@@ -1,6 +1,8 @@
 // src/utils/exportManager.ts — 高分辨率导出
 import { jsPDF } from 'jspdf';
 import { BeadColor, BeadStyle, ColorStat, CellSizeUnit } from '../types';
+import { saveFile } from './tauriAdapter';
+import { registerChineseFont } from './pdfFont';
 
 // ========== 常量 ==========
 
@@ -28,11 +30,7 @@ function isLight(hex: string): boolean {
 // ========== 通用下载 ==========
 
 export function downloadFile(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
+  saveFile(blob, filename);
 }
 
 export function downloadText(content: string, filename: string): void {
@@ -200,6 +198,10 @@ export function exportPDF(
   const pageHeight = 297;
   const margin = 10;
 
+  // 注册中文字体
+  registerChineseFont(doc);
+  doc.setFont('NotoSansSC');
+
   // 第一页：图纸
   doc.setFontSize(16);
   doc.setTextColor(62, 42, 30);
@@ -254,7 +256,8 @@ export function exportPDF(
     }
   }
 
-  doc.save(`拼豆图纸_${width}x${height}_${brand}.pdf`);
+  const pdfBlob = doc.output('blob');
+  saveFile(pdfBlob, `拼豆图纸_${width}x${height}_${brand}.pdf`);
 }
 
 // ==================== SVG 导出 ====================
