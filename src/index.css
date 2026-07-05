@@ -35,6 +35,8 @@ html, body, #root {
   color: #2d2420;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* 滚动条 — 暖色系 */
@@ -106,8 +108,3 @@ input[type='checkbox'] {
   }
 }
 
-/* Tauri Android 状态栏适配 */
-.tauri-android {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-}

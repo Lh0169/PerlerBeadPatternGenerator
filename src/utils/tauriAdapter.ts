@@ -14,34 +14,9 @@ export const isMobile = (): boolean => {
          (window as any).__TAURI_METADATA__?.platform === 'ios';
 };
 
-// 文件保存适配（Tauri 原生对话框 / 浏览器下载）
+// 文件保存适配（Tauri 原生对话框 / 移动端分享 / 浏览器下载）
 export async function saveFile(blob: Blob, filename: string): Promise<void> {
-  if (isTauri) {
-    const { save } = await import('@tauri-apps/plugin-dialog');
-    const { writeFile } = await import('@tauri-apps/plugin-fs');
-
-    // 从文件名提取扩展名
-    const ext = filename.split('.').pop() || '';
-    const extMap: Record<string, string> = {
-      png: 'PNG 图片',
-      pdf: 'PDF 文档',
-      svg: 'SVG 矢量图',
-      csv: 'CSV 表格',
-      json: 'JSON 数据',
-    };
-
-    const path = await save({
-      defaultPath: filename,
-      filters: [
-        { name: extMap[ext] || ext, extensions: [ext] },
-      ],
-    });
-
-    if (path) {
-      const arrayBuffer = await blob.arrayBuffer();
-      await writeFile(path, new Uint8Array(arrayBuffer));
-    }
-  } else {
+  if (!isTauri) {
     // 浏览器环境：使用传统下载
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -51,6 +26,57 @@ export async function saveFile(blob: Blob, filename: string): Promise<void> {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    return;
+  }
+
+  // Tauri 桌面：原生保存对话框 + 文件写入
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const platform = (window as any).__TAURI_METADATA__?.platform || '';
+
+  if (platform === 'android' || platform === 'ios') {
+    // 移动端：通过系统分享面板，用户可选择保存到文件、发送等
+    const ext = filename.split('.').pop() || '';
+    const mimeMap: Record<string, string> = {
+      png: 'image/png',
+      pdf: 'application/pdf',
+      svg: 'image/svg+xml',
+      csv: 'text/csv',
+      json: 'application/json',
+    };
+    const file = new File([blob], filename, { type: mimeMap[ext] || 'application/octet-stream' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file] });
+    } else {
+      // 降级：写入应用缓存目录 + 提示
+      const { writeFile, BaseDirectory } = await import('@tauri-apps/plugin-fs');
+      const arrayBuffer = await blob.arrayBuffer();
+      await writeFile(filename, new Uint8Array(arrayBuffer), { baseDir: BaseDirectory.AppCache });
+      alert(`文件已保存到应用缓存目录（可通过文件管理器查看）：${filename}`);
+    }
+    return;
+  }
+
+  // 桌面 Tauri：原生保存对话框
+  const { save } = await import('@tauri-apps/plugin-dialog');
+  const { writeFile } = await import('@tauri-apps/plugin-fs');
+
+  const fext = filename.split('.').pop() || '';
+  const extMap: Record<string, string> = {
+    png: 'PNG 图片',
+    pdf: 'PDF 文档',
+    svg: 'SVG 矢量图',
+    csv: 'CSV 表格',
+    json: 'JSON 数据',
+  };
+
+  const path = await save({
+    defaultPath: filename,
+    filters: [{ name: extMap[fext] || fext, extensions: [fext] }],
+  });
+
+  if (path) {
+    const arrayBuffer = await blob.arrayBuffer();
+    await writeFile(path, new Uint8Array(arrayBuffer));
   }
 }
 
