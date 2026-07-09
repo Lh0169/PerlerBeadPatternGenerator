@@ -6,6 +6,9 @@ docs
 # 除 README 外所有 md 文档不入库
 *.md
 !README.md
+# 签名密钥
+*.keystore
+*.jks
 # Tauri 构建产物
 src-tauri/target/
 src-tauri/gen/android/**/build/

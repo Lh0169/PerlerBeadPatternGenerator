@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { isTauri } from '../utils/tauriAdapter';
+import { useState } from 'react';
+import { isTauri, getPlatform } from '../utils/tauriAdapter';
 
 export interface PlatformInfo {
   isTauri: boolean;
@@ -8,26 +8,30 @@ export interface PlatformInfo {
   platform: 'web' | 'windows' | 'macos' | 'linux' | 'android' | 'ios';
 }
 
+function getPlatformInfo(): PlatformInfo {
+  // Web 环境：同样通过 getPlatform() 检测（支持 PWA / 移动端浏览器场景）
+  if (!isTauri) {
+    const p = getPlatform();
+    const mobile = p === 'android' || p === 'ios';
+    return {
+      isTauri: false,
+      isMobile: mobile,
+      isDesktop: !mobile,
+      platform: mobile ? (p as PlatformInfo['platform']) : 'web',
+    };
+  }
+  const p = getPlatform();
+  const isMobile = p === 'android' || p === 'ios';
+  return {
+    isTauri: true,
+    isMobile,
+    isDesktop: !isMobile,
+    platform: (isMobile ? p : (p || 'windows')) as PlatformInfo['platform'],
+  };
+}
+
 export function usePlatform(): PlatformInfo {
-  const [info, setInfo] = useState<PlatformInfo>({
-    isTauri: false,
-    isMobile: false,
-    isDesktop: true,
-    platform: 'web',
-  });
-
-  useEffect(() => {
-    if (isTauri) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tauriPlatform = (window as any).__TAURI_METADATA__?.platform || 'windows';
-      setInfo({
-        isTauri: true,
-        isMobile: ['android', 'ios'].includes(tauriPlatform),
-        isDesktop: ['windows', 'macos', 'linux'].includes(tauriPlatform),
-        platform: tauriPlatform,
-      });
-    }
-  }, []);
-
+  // 同步计算初始状态，消除 useEffect 异步导致的移动端按钮闪烁
+  const [info] = useState<PlatformInfo>(getPlatformInfo);
   return info;
 }

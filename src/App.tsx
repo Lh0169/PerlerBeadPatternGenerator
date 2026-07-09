@@ -190,32 +190,46 @@ const App: React.FC = () => {
 
   // ========== 导出 ==========
 
-  const handleExport = useCallback((format: string) => {
+  const handleExport = useCallback(async (format: string) => {
     if (matrix.length === 0 || exporting) return;
     const labels: Record<string, string> = { png: 'PNG 图纸', pdf: 'PDF 文档', svg: 'SVG 矢量', csv: 'CSV 采购清单', json: 'JSON 数据' };
-    setExporting(`正在导出 ${labels[format] ?? format}...`);
-    // requestAnimationFrame 确保遮罩先渲染
-    requestAnimationFrame(() => {
-      switch (format) {
-        case 'png':
-          exportPNG(matrix, colorMap, imgW, imgH, beadStyle, showStatsExport, stats, brand, cellSizeUnit);
-          break;
-        case 'csv':
-          exportCSV(stats, brand);
-          break;
-        case 'json':
-          exportJSON(matrix, imgW, imgH, stats, brand, cellSizeUnit, beadStyle);
-          break;
-        case 'svg':
-          exportSVG(matrix, colorMap, imgW, imgH, beadStyle);
-          break;
-        case 'pdf':
-          exportPDF(matrix, colorMap, imgW, imgH, beadStyle, showStatsExport, stats, brand, cellSizeUnit);
-          break;
-      }
-      // 最小显示 800ms，防止一闪而过
-      setTimeout(() => setExporting(''), 800);
+    const label = labels[format] ?? format;
+    setExporting(`正在导出 ${label}...`);
+    // 双 requestAnimationFrame：第一帧 React 提交 DOM，第二帧浏览器完成绘制
+    // 确保遮罩在导出耗时操作开始前已对用户可见
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
     });
+
+    let result: { success: boolean; filePath?: string; error?: string };
+    switch (format) {
+      case 'png':
+        result = await exportPNG(matrix, colorMap, imgW, imgH, beadStyle, showStatsExport, stats, brand, cellSizeUnit);
+        break;
+      case 'csv':
+        result = await exportCSV(stats, brand);
+        break;
+      case 'json':
+        result = await exportJSON(matrix, imgW, imgH, stats, brand, cellSizeUnit, beadStyle);
+        break;
+      case 'svg':
+        result = await exportSVG(matrix, colorMap, imgW, imgH, beadStyle);
+        break;
+      case 'pdf':
+        result = await exportPDF(matrix, colorMap, imgW, imgH, beadStyle, showStatsExport, stats, brand, cellSizeUnit);
+        break;
+      default:
+        setExporting('');
+        return;
+    }
+
+    if (result.success) {
+      setExporting(`${label} 导出成功`);
+    } else {
+      setExporting(`导出失败: ${result.error || '未知错误'}`);
+    }
+    // 成功显示 2 秒，失败显示 4 秒后清除
+    setTimeout(() => setExporting(''), result.success ? 2000 : 4000);
   }, [matrix, colorMap, imgW, imgH, beadStyle, showCodes, stats, brand, cellSizeUnit, exporting]);
 
   // ========== 键盘快捷键 ==========
@@ -384,10 +398,20 @@ const App: React.FC = () => {
           style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }}>
           <div className="flex flex-col items-center gap-4 px-10 py-8 rounded-2xl shadow-2xl border"
             style={{ background: '#fffdf9', borderColor: '#e5ded4' }}>
-            <div className="w-10 h-10 border-[3px] rounded-full animate-spin"
-              style={{ borderColor: '#e5ded4', borderTopColor: '#30E787' }} />
+            {exporting.includes('失败') ? (
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
+                style={{ background: '#FFEBEE', color: '#C62828' }}>✕</div>
+            ) : exporting.includes('成功') ? (
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
+                style={{ background: '#E8F5E9', color: '#2E7D32' }}>✓</div>
+            ) : (
+              <div className="w-10 h-10 border-[3px] rounded-full animate-spin"
+                style={{ borderColor: '#e5ded4', borderTopColor: '#30E787' }} />
+            )}
             <span className="text-sm font-bold" style={{ color: '#2d2420' }}>{exporting}</span>
-            <span className="text-xs" style={{ color: '#9b8e86' }}>请勿关闭页面</span>
+            {!exporting.includes('成功') && !exporting.includes('失败') && (
+              <span className="text-xs" style={{ color: '#9b8e86' }}>请勿关闭页面</span>
+            )}
           </div>
         </div>
       )}

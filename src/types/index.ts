@@ -27,6 +27,21 @@ export interface ColorStat {
   percentage: number;
 }
 
+/** 文件保存结果 */
+export interface SaveResult {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
+/** 导出结果 */
+export interface ExportResult {
+  success: boolean;
+  filePath?: string;
+  fileSize?: number;
+  error?: string;
+}
+
 export const DEFAULT_GRID_WIDTH = 50;
 export const MIN_GRID_WIDTH = 10;
 export const MAX_GRID_WIDTH = 200;

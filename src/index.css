@@ -35,8 +35,8 @@ html, body, #root {
   color: #2d2420;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: var(--status-bar-height, 0px);
+  padding-bottom: var(--navigation-bar-height, 0px);
 }
 
 /* 滚动条 — 暖色系 */

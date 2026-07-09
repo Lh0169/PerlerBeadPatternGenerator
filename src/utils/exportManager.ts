@@ -29,18 +29,18 @@ function isLight(hex: string): boolean {
 
 // ========== 通用下载 ==========
 
-export function downloadFile(blob: Blob, filename: string): void {
-  saveFile(blob, filename);
+export async function downloadFile(blob: Blob, filename: string): Promise<{ success: boolean; path?: string; error?: string }> {
+  return saveFile(blob, filename);
 }
 
-export function downloadText(content: string, filename: string): void {
+export async function downloadText(content: string, filename: string): Promise<{ success: boolean; path?: string; error?: string }> {
   const blob = new Blob(['﻿' + content], { type: 'text/plain;charset=utf-8' });
-  downloadFile(blob, filename);
+  return downloadFile(blob, filename);
 }
 
 // ==================== PNG 导出 ====================
 
-export function exportPNG(
+export async function exportPNG(
   matrix: string[][],
   colorMap: Map<string, BeadColor>,
   width: number,
@@ -50,139 +50,157 @@ export function exportPNG(
   stats: ColorStat[],
   brand: string,
   unit: CellSizeUnit,
-): void {
-  const gridW = width * CELL;
-  const gridH = height * CELL;
+): Promise<{ success: boolean; filePath?: string; fileSize?: number; error?: string }> {
+  try {
+    const gridW = width * CELL;
+    const gridH = height * CELL;
 
-  // 右侧统计面板内容高度
-  const sorted = [...stats].sort((a, b) => b.count - a.count);
-  const statsTitleH = 55;
-  const statsSummaryH = 25;
-  const statsItemH = 30;
-  const statsListH = Math.ceil(sorted.length / 2) * statsItemH;
-  const statsContentH = statsTitleH + statsSummaryH + statsListH + 30;
+    // 右侧统计面板内容高度
+    const sorted = [...stats].sort((a, b) => b.count - a.count);
+    const statsTitleH = 55;
+    const statsSummaryH = 25;
+    const statsItemH = 30;
+    const statsListH = Math.ceil(sorted.length / 2) * statsItemH;
+    const statsContentH = statsTitleH + statsSummaryH + statsListH + 30;
 
-  const canvasW = gridW + (showStats ? GAP + PANEL_W : 0);
-  const canvasH = Math.max(gridH, showStats ? statsContentH : 0);
+    const canvasW = gridW + (showStats ? GAP + PANEL_W : 0);
+    const canvasH = Math.max(gridH, showStats ? statsContentH : 0);
 
-  const canvas = document.createElement('canvas');
-  canvas.width = canvasW;
-  canvas.height = canvasH;
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, canvasW, canvasH);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvasW, canvasH);
 
-  // ===== 绘制珠子 =====
-  for (let row = 0; row < height; row++) {
-    for (let col = 0; col < width; col++) {
-      const id = matrix[row]?.[col];
-      const c = id ? colorMap.get(id) : null;
-      const cx = col * CELL + CELL / 2;
-      const cy = row * CELL + CELL / 2;
+    // ===== 绘制珠子 =====
+    for (let row = 0; row < height; row++) {
+      for (let col = 0; col < width; col++) {
+        const id = matrix[row]?.[col];
+        const c = id ? colorMap.get(id) : null;
+        const cx = col * CELL + CELL / 2;
+        const cy = row * CELL + CELL / 2;
 
-      if (!c) continue;
+        if (!c) continue;
 
-      ctx.fillStyle = c.hex;
-      if (beadStyle === 'round') {
-        ctx.beginPath();
-        ctx.arc(cx, cy, CELL / 2 - 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (beadStyle === 'hollow') {
-        ctx.beginPath();
-        ctx.arc(cx, cy, CELL / 2 - 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.beginPath();
-        ctx.arc(cx, cy, CELL / 5, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.fillRect(col * CELL + 2, row * CELL + 2, CELL - 4, CELL - 4);
+        ctx.fillStyle = c.hex;
+        if (beadStyle === 'round') {
+          ctx.beginPath();
+          ctx.arc(cx, cy, CELL / 2 - 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (beadStyle === 'hollow') {
+          ctx.beginPath();
+          ctx.arc(cx, cy, CELL / 2 - 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(0,0,0,0.15)';
+          ctx.beginPath();
+          ctx.arc(cx, cy, CELL / 5, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(col * CELL + 2, row * CELL + 2, CELL - 4, CELL - 4);
+        }
+
+        // 色号文字 — 导出时始终印在每个格子上
+        ctx.fillStyle = isLight(c.hex) ? '#000' : '#fff';
+        ctx.font = `bold ${CELL * 0.24}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(c.code, cx, cy);
       }
-
-      // 色号文字 — 导出时始终印在每个格子上
-      ctx.fillStyle = isLight(c.hex) ? '#000' : '#fff';
-      ctx.font = `bold ${CELL * 0.24}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(c.code, cx, cy);
     }
-  }
 
-  // ===== 红色分隔线（每 GROUP 个格子） =====
-  ctx.strokeStyle = '#E53935';
-  ctx.lineWidth = 2.5;
-  for (let r = GROUP; r < height; r += GROUP) {
-    ctx.beginPath();
-    ctx.moveTo(0, r * CELL);
-    ctx.lineTo(gridW, r * CELL);
-    ctx.stroke();
-  }
-  for (let c = GROUP; c < width; c += GROUP) {
-    ctx.beginPath();
-    ctx.moveTo(c * CELL, 0);
-    ctx.lineTo(c * CELL, gridH);
-    ctx.stroke();
-  }
+    // ===== 红色分隔线（每 GROUP 个格子） =====
+    ctx.strokeStyle = '#E53935';
+    ctx.lineWidth = 2.5;
+    for (let r = GROUP; r < height; r += GROUP) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * CELL);
+      ctx.lineTo(gridW, r * CELL);
+      ctx.stroke();
+    }
+    for (let c = GROUP; c < width; c += GROUP) {
+      ctx.beginPath();
+      ctx.moveTo(c * CELL, 0);
+      ctx.lineTo(c * CELL, gridH);
+      ctx.stroke();
+    }
 
-  // ===== 右侧统计面板 =====
-  if (showStats) {
-    const px = gridW + GAP;
-    const total = stats.reduce((s, c) => s + c.count, 0);
+    // ===== 右侧统计面板 =====
+    if (showStats) {
+      const px = gridW + GAP;
+      const total = stats.reduce((s, c) => s + c.count, 0);
 
-    // 标题
-    ctx.fillStyle = '#1a1a1a';
-    ctx.font = 'bold 22px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`拼豆统计`, px, 8);
-
-    // 子标题
-    ctx.fillStyle = '#888';
-    ctx.font = '13px sans-serif';
-    ctx.fillText(`${brand} · ${unit}  |  ${width}×${height}  |  共 ${total} 珠  |  ${stats.length} 色`, px, 36);
-
-    // 分隔线
-    ctx.strokeStyle = '#E0E0E0';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(px, 56);
-    ctx.lineTo(px + PANEL_W, 56);
-    ctx.stroke();
-
-    // 颜色清单（2列）
-    sorted.forEach((s, i) => {
-      const col = i % 2;
-      const r = Math.floor(i / 2);
-      const sx = px + col * 195;
-      const sy = 65 + r * statsItemH;
-
-      // 大色块
-      ctx.fillStyle = s.color.hex;
-      ctx.fillRect(sx, sy, 24, 24);
-      ctx.strokeStyle = '#CCC';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(sx, sy, 24, 24);
-
-      // 色号 + 名称
+      // 标题
       ctx.fillStyle = '#1a1a1a';
-      ctx.font = 'bold 13px sans-serif';
-      ctx.fillText(`${s.color.code}  ${s.color.name}`, sx + 32, sy + 2);
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`拼豆统计`, px, 8);
 
-      // 数量 + 占比
-      ctx.fillStyle = '#666';
-      ctx.font = '12px sans-serif';
-      ctx.fillText(`×${s.count}  (${s.percentage}%)`, sx + 32, sy + 20);
+      // 子标题
+      ctx.fillStyle = '#888';
+      ctx.font = '13px sans-serif';
+      ctx.fillText(`${brand} · ${unit}  |  ${width}×${height}  |  共 ${total} 珠  |  ${stats.length} 色`, px, 36);
+
+      // 分隔线
+      ctx.strokeStyle = '#E0E0E0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, 56);
+      ctx.lineTo(px + PANEL_W, 56);
+      ctx.stroke();
+
+      // 颜色清单（2列）
+      sorted.forEach((s, i) => {
+        const col = i % 2;
+        const r = Math.floor(i / 2);
+        const sx = px + col * 195;
+        const sy = 65 + r * statsItemH;
+
+        // 大色块
+        ctx.fillStyle = s.color.hex;
+        ctx.fillRect(sx, sy, 24, 24);
+        ctx.strokeStyle = '#CCC';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx, sy, 24, 24);
+
+        // 色号 + 名称
+        ctx.fillStyle = '#1a1a1a';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(`${s.color.code}  ${s.color.name}`, sx + 32, sy + 2);
+
+        // 数量 + 占比
+        ctx.fillStyle = '#666';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(`×${s.count}  (${s.percentage}%)`, sx + 32, sy + 20);
+      });
+    }
+
+    // 将 canvas.toBlob 转为 Promise
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((b) => resolve(b), 'image/png', 1.0);
     });
-  }
 
-  canvas.toBlob((b) => {
-    if (b) downloadFile(b, `拼豆图纸_${width}x${height}_${brand}.png`);
-  }, 'image/png', 1.0);
+    if (!blob) {
+      return { success: false, error: '画布转 Blob 失败' };
+    }
+
+    const filename = `拼豆图纸_${width}x${height}_${brand}.png`;
+    const result = await downloadFile(blob, filename);
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'PNG 保存失败' };
+    }
+
+    return { success: true, filePath: result.path, fileSize: blob.size };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'PNG 导出失败' };
+  }
 }
 
 // ==================== PDF 导出（高清 + 格子色号 + 红色分隔线）====================
 
-export function exportPDF(
+export async function exportPDF(
   matrix: string[][],
   colorMap: Map<string, BeadColor>,
   width: number,
@@ -192,7 +210,8 @@ export function exportPDF(
   stats: ColorStat[],
   brand: string,
   unit: CellSizeUnit,
-): void {
+): Promise<{ success: boolean; filePath?: string; fileSize?: number; error?: string }> {
+  try {
   // 页面设置：A3 横向，格子更大更清晰
   const doc = new jsPDF('l', 'mm', 'a3');  // l = landscape 横向
   const pageWidth = 420;   // A3 横向宽度
@@ -351,18 +370,29 @@ export function exportPDF(
   }
 
   const pdfBlob = doc.output('blob');
-  saveFile(pdfBlob, `拼豆图纸_${width}x${height}_${brand}.pdf`);
+  const filename = `拼豆图纸_${width}x${height}_${brand}.pdf`;
+  const result = await saveFile(pdfBlob, filename);
+
+  if (!result.success) {
+    return { success: false, error: result.error || 'PDF 保存失败' };
+  }
+
+  return { success: true, filePath: result.path, fileSize: pdfBlob.size };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'PDF 导出失败' };
+  }
 }
 
 // ==================== SVG 导出 ====================
 
-export function exportSVG(
+export async function exportSVG(
   matrix: string[][],
   colorMap: Map<string, BeadColor>,
   width: number,
   height: number,
   beadStyle: BeadStyle,
-): void {
+): Promise<{ success: boolean; filePath?: string; fileSize?: number; error?: string }> {
+  try {
   const C = 10;
   const w = width * C;
   const h = height * C;
@@ -384,20 +414,42 @@ export function exportSVG(
   }
   svg += '</svg>';
   const blob = new Blob([svg], { type: 'image/svg+xml' });
-  downloadFile(blob, `拼豆图纸_${width}x${height}.svg`);
+  const filename = `拼豆图纸_${width}x${height}.svg`;
+  const result = await downloadFile(blob, filename);
+
+  if (!result.success) {
+    return { success: false, error: result.error || 'SVG 保存失败' };
+  }
+
+  return { success: true, filePath: result.path, fileSize: blob.size };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'SVG 导出失败' };
+  }
 }
 
 // ==================== CSV 导出 ====================
 
-export function exportCSV(stats: ColorStat[], brand: string): void {
+export async function exportCSV(stats: ColorStat[], brand: string): Promise<{ success: boolean; filePath?: string; fileSize?: number; error?: string }> {
+  try {
   const header = '编号,名称,Hex,数量,占比(%)';
   const rows = stats.map(s => `${s.color.code},${s.color.name},${s.color.hex},${s.count},${s.percentage}`);
-  downloadText([header, ...rows].join('\n'), `拼豆清单_${brand}.csv`);
+  const content = [header, ...rows].join('\n');
+  const filename = `拼豆清单_${brand}.csv`;
+  const result = await downloadText(content, filename);
+
+  if (!result.success) {
+    return { success: false, error: result.error || 'CSV 保存失败' };
+  }
+
+  return { success: true, filePath: result.path, fileSize: new Blob([content]).size };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'CSV 导出失败' };
+  }
 }
 
 // ==================== JSON 导出 ====================
 
-export function exportJSON(
+export async function exportJSON(
   matrix: string[][],
   width: number,
   height: number,
@@ -405,7 +457,8 @@ export function exportJSON(
   brand: string,
   unit: CellSizeUnit,
   beadStyle: BeadStyle,
-): void {
+): Promise<{ success: boolean; filePath?: string; fileSize?: number; error?: string }> {
+  try {
   const coords: { x: number; y: number; colorId: string }[] = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -434,5 +487,16 @@ export function exportJSON(
     colorList,
     grid: matrix,
   };
-  downloadText(JSON.stringify(data, null, 2), `拼豆数据_${width}x${height}_${brand}.json`);
+  const content = JSON.stringify(data, null, 2);
+  const filename = `拼豆数据_${width}x${height}_${brand}.json`;
+  const result = await downloadText(content, filename);
+
+  if (!result.success) {
+    return { success: false, error: result.error || 'JSON 保存失败' };
+  }
+
+  return { success: true, filePath: result.path, fileSize: new Blob([content]).size };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'JSON 导出失败' };
+  }
 }

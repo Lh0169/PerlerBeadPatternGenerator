@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { animate } from 'animejs';
 import { BeadStyle, GridSpacing, CellSizeUnit, MardCategory } from '../types';
+import { usePlatform } from '../hooks/usePlatform';
 import Magnet from './ui/Magnet/Magnet';
 
 interface Props {
@@ -94,6 +95,8 @@ const Sidebar: React.FC<Props> = ({
   const overlayRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [animating, setAnimating] = useState(false);
+
+  const platformInfo = usePlatform();
 
   const accentGreen = '#30E787';
   const accentDeep = '#25b868';
@@ -313,6 +316,7 @@ const Sidebar: React.FC<Props> = ({
                 PNG 图纸
               </button>
             </Magnet>
+            {!platformInfo.isMobile && (
             <Magnet padding={40}>
               <button onClick={() => onExport('pdf')} disabled={!hasMatrix}
                 className="flex items-center justify-center gap-1.5 py-3 w-full text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] border shadow-sm"
@@ -321,10 +325,12 @@ const Sidebar: React.FC<Props> = ({
                 PDF 文档
               </button>
             </Magnet>
+            )}
           </div>
         </section>
 
-        {/* 数据导出 */}
+        {/* 数据导出（桌面端专属） */}
+        {!platformInfo.isMobile && (
         <section className="p-3 rounded-xl border space-y-2" style={{ background: '#faf7f2', borderColor: '#f0ebe4' }}>
           <SectionTitle label="数据导出" dotColor="#9b8e86" />
           <div className="grid grid-cols-3 gap-2">
@@ -337,6 +343,7 @@ const Sidebar: React.FC<Props> = ({
             ))}
           </div>
         </section>
+        )}
       </div>
     </aside>
   );
