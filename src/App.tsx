@@ -4,6 +4,8 @@ import {
   DEFAULT_GRID_WIDTH,
 } from './types';
 import { getPalette, getBrandNames, registerCustomPalette } from './utils/colorPalette';
+import ZoomFab from './components/ZoomFab';
+import type { StyleKey } from './utils/denoiseEngine';
 import { buildColorMap } from './utils/colorMatcher';
 import { processImage } from './utils/imageProcessor';
 import { exportPNG, exportCSV, exportJSON, exportSVG, exportPDF } from './utils/exportManager';
@@ -53,6 +55,7 @@ const App: React.FC = () => {
   const [showToolbar, setShowToolbar] = useState(false);
   const [forceExpandSidebar, setForceExpandSidebar] = useState(false);
   const [exporting, setExporting] = useState('');
+  const [stylePreset, setStylePreset] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const brands = getBrandNames();
@@ -101,7 +104,7 @@ const App: React.FC = () => {
     setIsProcessing(true);
     try {
       const p = getPalette(brand);
-      const result = await processImage(img, gridWidth, p, brand === 'MARD' ? mardCategory : undefined);
+      const result = await processImage(img, gridWidth, p, brand === 'MARD' ? mardCategory : undefined, (stylePreset || null) as StyleKey | null);
       setMatrix(result.matrix);
       setImgW(result.width);
       setImgH(result.height);
@@ -112,7 +115,7 @@ const App: React.FC = () => {
       setSelectedColor(null);
     } catch (e) { console.error('处理失败:', e); }
     finally { setIsProcessing(false); }
-  }, [brand, gridWidth, mardCategory]);
+  }, [brand, gridWidth, mardCategory, stylePreset]);
 
   const handleCropComplete = useCallback((croppedUrl: string) => {
     setCropSrc(null);
@@ -136,11 +139,11 @@ const App: React.FC = () => {
     setTimeout(() => setForceExpandSidebar(true), 500);
   }, [originalFile, doProcess]);
 
-  // 品牌/分类变更 → 立即重生
+  // 品牌/分类/风格变更 → 立即重生
   useEffect(() => {
     if (!image) return;
     doProcess(image);
-  }, [brand, mardCategory]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [brand, mardCategory, stylePreset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 宽度变更 → 防抖重生
   const debounceRef = useRef<number>(0);
@@ -484,12 +487,13 @@ const App: React.FC = () => {
           cellSizeUnit={cellSizeUnit} beadStyle={beadStyle} gridSpacing={gridSpacing}
           showStats={showStatsExport} showToolbar={showToolbar}
           hasImage={!!image} hasMatrix={matrix.length > 0}
-          forceExpand={forceExpandSidebar}
+          forceExpand={forceExpandSidebar} stylePreset={stylePreset}
           onChangeWidth={setGridWidth} onChangeBrand={setBrand}
           onChangeMardCategory={(c) => { setMardCategory(c); }}
           onChangeCellSizeUnit={setCellSizeUnit}
           onChangeBeadStyle={setBeadStyle}
           onChangeGridSpacing={setGridSpacing}
+          onChangeStyle={(s) => setStylePreset(s)}
           onToggleStats={() => setShowStatsExport((v) => !v)}
           onToggleMirror={toggleMirror}
           onCleanup={() => setShowCleanupDialog(true)}
@@ -500,6 +504,9 @@ const App: React.FC = () => {
           onApplyCustomPalette={handleApplyCustomPalette}
         />
       </div>
+
+      {/* 悬浮缩放控件 */}
+      <ZoomFab zoom={zoom} visible={matrix.length > 0} onZoomChange={setZoom} />
 
     </div>
     </ClickSpark>

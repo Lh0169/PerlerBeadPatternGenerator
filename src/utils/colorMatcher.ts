@@ -1,7 +1,7 @@
 // src/utils/colorMatcher.ts
 import { BeadColor, ColorStat } from '../types';
 
-interface LabColor { l: number; a: number; b: number }
+export interface LabColor { l: number; a: number; b: number }
 interface LabPaletteEntry extends LabColor { id: string }
 
 /** sRGB → CIELAB */

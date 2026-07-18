@@ -3,6 +3,7 @@ import { animate } from 'animejs';
 import { BeadStyle, GridSpacing, CellSizeUnit, MardCategory, BeadColor } from '../types';
 import { usePlatform } from '../hooks/usePlatform';
 import { parseCustomPalette } from '../utils/colorPalette';
+import { STYLE_PRESETS, StyleKey } from '../utils/denoiseEngine';
 import Magnet from './ui/Magnet/Magnet';
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
   hasImage: boolean;
   hasMatrix: boolean;
   showToolbar: boolean;
+  stylePreset: string;
   /** 上传后触发 — 自动展开设置面板 */
   forceExpand: boolean;
   onChangeWidth: (w: number) => void;
@@ -25,6 +27,7 @@ interface Props {
   onChangeCellSizeUnit: (u: CellSizeUnit) => void;
   onChangeBeadStyle: (s: BeadStyle) => void;
   onChangeGridSpacing: (s: GridSpacing) => void;
+  onChangeStyle: (s: string) => void;
   onToggleStats: () => void;
   onToggleMirror: () => void;
   onCleanup: () => void;
@@ -98,9 +101,9 @@ const IconBtn: React.FC<{
 
 const Sidebar: React.FC<Props> = ({
   gridWidth, brand, brandNames, mardCategory, cellSizeUnit, beadStyle, gridSpacing,
-  hasImage, hasMatrix, showStats, showToolbar, forceExpand,
+  hasImage, hasMatrix, showStats, showToolbar, forceExpand, stylePreset,
   onChangeWidth, onChangeBrand, onChangeMardCategory, onChangeCellSizeUnit,
-  onChangeBeadStyle, onChangeGridSpacing,
+  onChangeBeadStyle, onChangeGridSpacing, onChangeStyle,
   onToggleStats, onToggleMirror, onCleanup,
   onExport, onUpload, onToggleToolbar, onForceExpandDone,
   onApplyCustomPalette,
@@ -305,6 +308,18 @@ const Sidebar: React.FC<Props> = ({
             </div>
           )}
 
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold uppercase" style={{ color: '#9b8e86' }}>风格预设</span>
+            <select value={stylePreset} onChange={(e) => onChangeStyle(e.target.value)}
+              className="w-full p-2.5 border rounded-lg text-xs font-bold cursor-pointer transition-colors"
+              style={{ background: '#faf7f2', borderColor: '#e5ded4', color: '#2d2420' }}>
+              <option value="">无风格（仅限色）</option>
+              {(Object.keys(STYLE_PRESETS) as StyleKey[]).map((k) => (
+                <option key={k} value={k}>{STYLE_PRESETS[k].label}</option>
+              ))}
+            </select>
+          </div>
+
           {/* 高级设置 */}
           <div className="border-t pt-2" style={{ borderColor: '#f0ebe4' }}>
             <button onClick={() => setShowAdvanced((v) => !v)}
@@ -410,7 +425,7 @@ const Sidebar: React.FC<Props> = ({
     <>
       {/* 遮罩层 */}
       {(expanded || animating) && (
-        <div ref={overlayRef} className="fixed inset-0 z-30" style={{ background: 'rgba(0,0,0,0.2)' }}
+        <div ref={overlayRef} className="fixed inset-0 z-30" style={{ background: 'rgba(0,0,0,0.06)' }}
           onClick={close} />
       )}
 

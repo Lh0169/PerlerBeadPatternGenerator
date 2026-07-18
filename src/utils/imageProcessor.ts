@@ -2,12 +2,14 @@
 import { BeadColor, MardCategory, ColorStat } from '../types';
 import { rgbToLab, findClosestColorLab, buildLabPalette, buildColorMap, generateStats, limitPaletteColors } from './colorMatcher';
 import { filterMardPalette } from './colorPalette';
+import { applyStyleDenoise, StyleKey } from './denoiseEngine';
 
 export async function processImage(
   image: HTMLImageElement,
   gridWidth: number,
   palette: BeadColor[],
   mardCategory?: MardCategory,
+  style?: StyleKey | null,
 ): Promise<{
   matrix: string[][];
   width: number;
@@ -53,6 +55,23 @@ export async function processImage(
     matrix.push(rowData);
   }
 
+  // 风格去杂
+  if (style) {
+    try {
+      const result = applyStyleDenoise({ matrix, width, height, palette: effectivePalette, style });
+      console.log(`[风格去杂] ${style} — 处理前 ${countNonEmpty(matrix)} 格，处理后 ${countNonEmpty(result.matrix)} 格`);
+      return { matrix: result.matrix, width, height, stats: result.stats };
+    } catch (e) {
+      console.error('[风格去杂] 失败，回退到原始结果:', e);
+    }
+  }
+
   const stats = generateStats(matrix, colorMap);
   return { matrix, width, height, stats };
+}
+
+function countNonEmpty(m: string[][]): number {
+  let n = 0;
+  for (const row of m) for (const id of row) if (id) n++;
+  return n;
 }
