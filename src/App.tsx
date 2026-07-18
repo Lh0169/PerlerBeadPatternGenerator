@@ -3,7 +3,7 @@ import {
   BeadColor, BeadStyle, GridSpacing, CellSizeUnit, EditorTool, MardCategory, ColorStat,
   DEFAULT_GRID_WIDTH,
 } from './types';
-import { getPalette, getBrandNames } from './utils/colorPalette';
+import { getPalette, getBrandNames, registerCustomPalette } from './utils/colorPalette';
 import { buildColorMap } from './utils/colorMatcher';
 import { processImage } from './utils/imageProcessor';
 import { exportPNG, exportCSV, exportJSON, exportSVG, exportPDF } from './utils/exportManager';
@@ -177,6 +177,11 @@ const App: React.FC = () => {
       return next;
     });
   }, [saveHistory]);
+
+  const handleApplyCustomPalette = useCallback((colors: BeadColor[]) => {
+    registerCustomPalette(colors);
+    setBrand('自定义');
+  }, []);
 
   const handleCleanup = useCallback((colorIds: string[]) => {
     const removeSet = new Set(colorIds);
@@ -492,6 +497,7 @@ const App: React.FC = () => {
           onUpload={handleFile}
           onToggleToolbar={() => setShowToolbar((v) => !v)}
           onForceExpandDone={() => setForceExpandSidebar(false)}
+          onApplyCustomPalette={handleApplyCustomPalette}
         />
       </div>
 

@@ -1,6 +1,6 @@
 // src/types/index.ts
 
-export type Brand = 'Perler' | 'Hama' | 'Artkal' | 'MARD' | 'Nabbi' | 'Ikea-Pyssla';
+export type Brand = 'Perler' | 'Hama' | 'Artkal' | 'ArtkalMini' | 'MARD' | 'Nabbi' | 'Ikea-Pyssla';
 export type BeadStyle = 'square' | 'round' | 'hollow';
 export type GridSpacing = 'none' | 'small' | 'large';
 export type CellSizeUnit = '5mm' | '2.6mm';

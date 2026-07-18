@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { animate } from 'animejs';
-import { BeadStyle, GridSpacing, CellSizeUnit, MardCategory } from '../types';
+import { BeadStyle, GridSpacing, CellSizeUnit, MardCategory, BeadColor } from '../types';
 import { usePlatform } from '../hooks/usePlatform';
+import { parseCustomPalette } from '../utils/colorPalette';
 import Magnet from './ui/Magnet/Magnet';
 
 interface Props {
@@ -31,7 +32,20 @@ interface Props {
   onUpload: (file: File) => void;
   onToggleToolbar: () => void;
   onForceExpandDone: () => void;
+  /** 应用自定义色板 */
+  onApplyCustomPalette: (colors: BeadColor[]) => void;
 }
+
+/** 尺寸预设 */
+const SIZE_PRESETS: { label: string; value: number }[] = [
+  { label: '常用尺寸...', value: 0 },
+  { label: '迷你 29', value: 29 },
+  { label: '小图 58', value: 58 },
+  { label: '钉板 78×78', value: 78 },
+  { label: '中图 87', value: 87 },
+  { label: '大图 116', value: 116 },
+  { label: '超大 145', value: 145 },
+];
 
 /** 分区标题 */
 const SectionTitle: React.FC<{ label: string; dotColor?: string }> = ({ label, dotColor = '#30E787' }) => (
@@ -89,12 +103,16 @@ const Sidebar: React.FC<Props> = ({
   onChangeBeadStyle, onChangeGridSpacing,
   onToggleStats, onToggleMirror, onCleanup,
   onExport, onUpload, onToggleToolbar, onForceExpandDone,
+  onApplyCustomPalette,
 }) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [animating, setAnimating] = useState(false);
+  const [customPaletteText, setCustomPaletteText] = useState('');
+  const [paletteError, setPaletteError] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const platformInfo = usePlatform();
 
@@ -249,6 +267,11 @@ const Sidebar: React.FC<Props> = ({
                 className="w-6 h-6 flex items-center justify-center rounded-md font-bold text-xs transition-colors"
                 style={{ background: '#f5f0e8', color: '#6b5e56' }}>+</button>
             </div>
+            <select value={0} onChange={(e) => { const v = parseInt(e.target.value); if (v > 0) onChangeWidth(v); }}
+              className="w-full p-2.5 border rounded-lg text-xs font-bold cursor-pointer transition-colors mt-1.5"
+              style={{ background: '#faf7f2', borderColor: '#e5ded4', color: '#9b8e86' }}>
+              {SIZE_PRESETS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
           </div>
 
           <div className="space-y-1">
@@ -281,6 +304,41 @@ const Sidebar: React.FC<Props> = ({
               </select>
             </div>
           )}
+
+          {/* 高级设置 */}
+          <div className="border-t pt-2" style={{ borderColor: '#f0ebe4' }}>
+            <button onClick={() => setShowAdvanced((v) => !v)}
+              className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest transition-colors"
+              style={{ color: '#9b8e86' }}>
+              <span style={{ transform: showAdvanced ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>▶</span>
+              高级设置
+            </button>
+            {showAdvanced && (
+              <div className="mt-2 space-y-2">
+                <div className="text-[10px] font-bold" style={{ color: '#9b8e86' }}>自定义色板</div>
+                <p className="text-[9px]" style={{ color: '#9b8e86' }}>
+                  粘贴色号数据，格式：<code style={{ background: '#f5f0e8', padding: '1px 4px', borderRadius: 3 }}>A1 #f7f3d6</code> 每行一个
+                </p>
+                <textarea value={customPaletteText} onChange={(e) => { setCustomPaletteText(e.target.value); setPaletteError(''); }}
+                  rows={3} placeholder="A1 #f7f3d6&#10;H7 #111111"
+                  className="w-full p-2 border rounded-lg text-[10px] resize-none transition-colors"
+                  style={{ background: '#faf7f2', borderColor: paletteError ? '#f87171' : '#e5ded4', color: '#2d2420' }} />
+                {paletteError && <p className="text-[9px]" style={{ color: '#f87171' }}>{paletteError}</p>}
+                <button onClick={() => {
+                  const text = customPaletteText.trim();
+                  if (!text) { setPaletteError('请粘贴色号数据'); return; }
+                  const colors = parseCustomPalette(text);
+                  if (!colors.length) { setPaletteError('格式错误，应为：A1 #f7f3d6 每行一个'); return; }
+                  setPaletteError('');
+                  onApplyCustomPalette(colors);
+                }}
+                  className="w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all"
+                  style={{ background: '#30E787', color: '#fff' }}>
+                  应用自定义色板 ({customPaletteText.trim() ? parseCustomPalette(customPaletteText).length : 0} 色)
+                </button>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* 导出设置 */}
