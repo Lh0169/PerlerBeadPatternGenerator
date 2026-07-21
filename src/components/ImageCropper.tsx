@@ -59,34 +59,29 @@ const ImageCropper: React.FC<Props> = ({ src, onCropComplete, onSkipCrop, onCanc
     ctx.fillRect((rect.x + rect.w) * scale, rect.y * scale, canvas.width - (rect.x + rect.w) * scale, rect.h * scale);
   }, [imgLoaded, rect]);
 
-  const getPos = useCallback((e: React.MouseEvent) => {
+  // 统一坐标转换，同时支持鼠标和触摸事件
+  const getCanvasPos = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
+    const r = canvas.getBoundingClientRect();
     return {
-      x: (e.clientX - rect.left) * (canvas.width / rect.width),
-      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+      x: (clientX - r.left) * (canvas.width / r.width),
+      y: (clientY - r.top) * (canvas.height / r.height),
     };
   }, []);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const pos = getPos(e);
-    const scale = canvasRef.current!.width / imgRef.current!.naturalWidth;
+  const getCorner = useCallback((pos: { x: number; y: number }, scale: number) => {
     const rx = rect.x * scale, ry = rect.y * scale, rw = rect.w * scale, rh = rect.h * scale;
     const margin = 10;
-    const corner =
+    return (
       pos.x < rx + margin && pos.y < ry + margin ? 'nw' :
       pos.x > rx + rw - margin && pos.y < ry + margin ? 'ne' :
       pos.x < rx + margin && pos.y > ry + rh - margin ? 'sw' :
       pos.x > rx + rw - margin && pos.y > ry + rh - margin ? 'se' :
-      pos.x > rx && pos.x < rx + rw && pos.y > ry && pos.y < ry + rh ? 'move' : null;
-    setDragCorner(corner);
-    setDragStart(pos);
-    setDragging(true);
-  };
+      pos.x > rx && pos.x < rx + rw && pos.y > ry && pos.y < ry + rh ? 'move' : null
+    );
+  }, [rect]);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragging || !dragCorner) return;
-    const pos = getPos(e);
+  const applyMove = useCallback((pos: { x: number; y: number }) => {
     const scale = canvasRef.current!.width / imgRef.current!.naturalWidth;
     const dx = (pos.x - dragStart.x) / scale;
     const dy = (pos.y - dragStart.y) / scale;
@@ -105,9 +100,41 @@ const ImageCropper: React.FC<Props> = ({ src, onCropComplete, onSkipCrop, onCanc
       y = Math.max(0, Math.min(y, img.naturalHeight - h));
       return { x, y, w, h };
     });
+  }, [dragStart, dragCorner]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const pos = getCanvasPos(e.clientX, e.clientY);
+    const scale = canvasRef.current!.width / imgRef.current!.naturalWidth;
+    setDragCorner(getCorner(pos, scale));
+    setDragStart(pos);
+    setDragging(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragging || !dragCorner) return;
+    applyMove(getCanvasPos(e.clientX, e.clientY));
   };
 
   const handleMouseUp = () => { setDragging(false); setDragCorner(null); };
+
+  // 触摸事件（移动端）
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const pos = getCanvasPos(touch.clientX, touch.clientY);
+    const scale = canvasRef.current!.width / imgRef.current!.naturalWidth;
+    setDragCorner(getCorner(pos, scale));
+    setDragStart(pos);
+    setDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!dragging || !dragCorner) return;
+    e.preventDefault();
+    applyMove(getCanvasPos(e.touches[0].clientX, e.touches[0].clientY));
+  };
+
+  const handleTouchEnd = () => { setDragging(false); setDragCorner(null); };
 
   const handleConfirm = () => {
     if (!imgRef.current) return;
@@ -134,11 +161,14 @@ const ImageCropper: React.FC<Props> = ({ src, onCropComplete, onSkipCrop, onCanc
         <h3 className="text-sm font-bold px-4 pt-4 pb-2" style={{ color: '#2d2420' }}>裁剪图片 — 拖动选框调整区域</h3>
         <div className="flex-1 overflow-auto relative mx-4">
           <canvas ref={canvasRef}
-            className="cursor-crosshair max-w-full rounded-lg"
+            className="cursor-crosshair max-w-full rounded-lg select-none touch-none"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           />
         </div>
         <div className="flex items-center gap-2 px-4 py-3">

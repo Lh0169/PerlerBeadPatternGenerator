@@ -14,3 +14,5 @@ src-tauri/target/
 src-tauri/gen/android/**/build/
 src-tauri/gen/android/.gradle/
 src-tauri/gen/android/local.properties
+# Android assets 由构建流程 npm run build:tauri → 复制 dist/ 生成
+src-tauri/gen/android/app/src/main/assets/
